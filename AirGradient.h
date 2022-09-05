@@ -197,7 +197,9 @@ class AirGradient
     void requestRead();
     bool read_PMS(DATA& data);
     bool readUntil(DATA& data, uint16_t timeout = SINGLE_RESPONSE_TIME);
+
     const char* getPM2();
+    DATA getPM_Raw();
     int getPM2_Raw();
 
     //PMS VARIABLES PUBLIC_END
