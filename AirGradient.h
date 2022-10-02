@@ -188,7 +188,6 @@ class AirGradient
       uint16_t PM_AE_UG_10_0;
     };
 
-    void PMS(Stream&);
     void sleep();
     void wakeUp();
     void activeMode();
@@ -226,7 +225,7 @@ class AirGradient
     void CO2_Init(int,int,int);
     const char* getCO2(int retryLimit = 5);
     int getCO2_Raw();
-    SoftwareSerial *_SoftSerial_CO2;
+    SoftwareSerial _SoftSerial_CO2;
 
     //CO2 VARIABLES PUBLIC END
 
@@ -253,12 +252,10 @@ class AirGradient
     enum STATUS { STATUS_WAITING, STATUS_OK };
     enum MODE { MODE_ACTIVE, MODE_PASSIVE };
 
-    uint8_t _payload[12];
-    Stream* _stream;
     STATUS _PMSstatus;
     MODE _mode = MODE_ACTIVE;
 
-    SoftwareSerial *_SoftSerial_PMS;
+    SoftwareSerial _SoftSerial_PMS;
     bool parse_pm_data(DATA &pm_data);
     char Char_PM2[10];
     //PMS VARIABLES PRIVATE END
@@ -293,8 +290,7 @@ class AirGradient
     uint8_t _type_MHZ19, temperature_MHZ19;
     bool debug_MHZ19 = false;
 
-    Stream * _serial_MHZ19;
-    SoftwareSerial *_SoftSerial_MHZ19;
+    SoftwareSerial _SoftSerial_MHZ19;
     uint8_t getCheckSum_MHZ19(unsigned char *packet);
 
     //MHZ19 VARABLES PUBLIC END

@@ -63,9 +63,7 @@ void AirGradient::PMS_Init(int rx_pin,int tx_pin){
   PMS_Init(rx_pin,tx_pin,9600);
 }
 void AirGradient::PMS_Init(int rx_pin,int tx_pin,int baudRate){
-  _SoftSerial_PMS = new SoftwareSerial(rx_pin,tx_pin);
-  PMS(*_SoftSerial_PMS);
-  _SoftSerial_PMS->begin(baudRate);
+  _SoftSerial_PMS.begin(baudRate, SWSERIAL_8N1, rx_pin, tx_pin);
 
   if(getPM2() <= 0){
     
@@ -79,8 +77,6 @@ void AirGradient::PMS_Init(int rx_pin,int tx_pin,int baudRate){
   }
   
 }
-
-
 
 const char* AirGradient::getPM2(){
   if (getPM2_Raw()) {
@@ -122,23 +118,18 @@ int AirGradient::getPM2_Raw(){
 
 //START PMS FUNCTIONS //
 
-void AirGradient::PMS(Stream& stream)
-{
-  this->_stream = &stream;
-}
-
 // Standby mode. For low power consumption and prolong the life of the sensor.
 void AirGradient::sleep()
 {
   uint8_t command[] = { 0x42, 0x4D, 0xE4, 0x00, 0x00, 0x01, 0x73 };
-  _stream->write(command, sizeof(command));
+  _SoftSerial_PMS.write(command, sizeof(command));
 }
 
 // Operating mode. Stable data should be got at least 30 seconds after the sensor wakeup from the sleep mode because of the fan's performance.
 void AirGradient::wakeUp()
 {
   uint8_t command[] = { 0x42, 0x4D, 0xE4, 0x00, 0x01, 0x01, 0x74 };
-  _stream->write(command, sizeof(command));
+  _SoftSerial_PMS.write(command, sizeof(command));
 }
 
 // Active mode. Default mode after power up. In this mode sensor would send serial data to the host automatically.
@@ -146,7 +137,7 @@ void AirGradient::activeMode()
 {
   
   uint8_t command[] = { 0x42, 0x4D, 0xE1, 0x00, 0x01, 0x01, 0x71 };
-  _stream->write(command, sizeof(command));
+  _SoftSerial_PMS.write(command, sizeof(command));
   _mode = MODE_ACTIVE;
 }
 
@@ -154,7 +145,7 @@ void AirGradient::activeMode()
 void AirGradient::passiveMode()
 {
   uint8_t command[] = { 0x42, 0x4D, 0xE1, 0x00, 0x00, 0x01, 0x70 };
-  _stream->write(command, sizeof(command));
+  _SoftSerial_PMS.write(command, sizeof(command));
   _mode = MODE_PASSIVE;
 }
 
@@ -164,7 +155,7 @@ void AirGradient::requestRead()
   if (_mode == MODE_PASSIVE)
   {
     uint8_t command[] = { 0x42, 0x4D, 0xE2, 0x00, 0x00, 0x01, 0x71 };
-    _stream->write(command, sizeof(command));
+    _SoftSerial_PMS.write(command, sizeof(command));
   }
 }
 
@@ -173,7 +164,7 @@ bool AirGradient::readUntil(DATA& data, uint16_t timeout)
 {
   uint32_t start = millis();
   do {
-    if (_stream->available() >= 32) {
+    if (_SoftSerial_PMS.available() >= 32) {
       return parse_pm_data(data);
     }
   } while (millis() - start < timeout);
@@ -186,7 +177,7 @@ bool AirGradient::parse_pm_data(DATA &pm_data)
   _PMSstatus = STATUS_WAITING;
   uint8_t data[32] = {0};
   for(int i = 0; i < 32; i++) {
-    data[i] = _stream->read();
+    data[i] = _SoftSerial_PMS.read();
   }
 
   if (data[0] != 0x42) {
@@ -214,7 +205,7 @@ bool AirGradient::parse_pm_data(DATA &pm_data)
     pm_data.PM_SP_UG_1_0 = makeWord(data[4], data[5]);
     pm_data.PM_SP_UG_2_5 = makeWord(data[6], data[7]);
     pm_data.PM_SP_UG_10_0 = makeWord(data[8], data[9]);
-
+    
     // Atmospheric Environment.
     pm_data.PM_AE_UG_1_0 = makeWord(data[10], data[11]);
     pm_data.PM_AE_UG_2_5 = makeWord(data[12], data[13]);
@@ -528,8 +519,7 @@ void AirGradient::CO2_Init(int rx_pin,int tx_pin,int baudRate){
   if (_debugMsg) {
     Serial.println("Initializing CO2...");
     }
-  _SoftSerial_CO2 = new SoftwareSerial(rx_pin,tx_pin);
-  _SoftSerial_CO2->begin(baudRate);
+  _SoftSerial_CO2.begin(baudRate, SWSERIAL_8N1, rx_pin, tx_pin);
 
   if(getCO2_Raw() == -1){
     if (_debugMsg) {
@@ -562,13 +552,12 @@ int AirGradient::getCO2_Raw(){
   const byte CO2Command[] = {0xFE, 0X44, 0X00, 0X08, 0X02, 0X9F, 0X25};
   byte CO2Response[] = {0,0,0,0,0,0,0};
 
-  _SoftSerial_CO2->write(CO2Command, 7);
+  _SoftSerial_CO2.write(CO2Command, sizeof(CO2Command));
   delay(100);  //give the sensor a bit of time to respond
 
-  if (_SoftSerial_CO2->available()){
-    for (int i=0; i < 7; i++) {
-      int byte = _SoftSerial_CO2->read();
-      CO2Response[i] = byte;
+  if (_SoftSerial_CO2.available() >= (int)sizeof(CO2Response)) {
+    for (size_t i = 0; i < sizeof(CO2Response); i++) {
+      CO2Response[i]  = (byte)_SoftSerial_CO2.read();
       if (CO2Response[0] != 254) {
         return -1;  //error code for debugging
       }
@@ -595,8 +584,7 @@ void AirGradient::MHZ19_Init(int rx_pin,int tx_pin, int baudRate, uint8_t type) 
   if (_debugMsg) {
       Serial.println("Initializing MHZ19...");
       }
-    _SoftSerial_MHZ19 = new SoftwareSerial(rx_pin,tx_pin);
-    _SoftSerial_MHZ19->begin(baudRate);
+    _SoftSerial_MHZ19.begin(baudRate, SWSERIAL_8N1, rx_pin, tx_pin);
 
     if(readMHZ19() == -1){
       if (_debugMsg) {
@@ -681,19 +669,19 @@ int AirGradient::readInternal_MHZ19() {
   unsigned char response[9];  // for answer
 
   if (debug_MHZ19) Serial.print(F("  >> Sending CO2 request"));
-  _SoftSerial_MHZ19->write(cmd, 9);  // request PPM CO2
+  _SoftSerial_MHZ19.write(cmd, 9);  // request PPM CO2
   lastRequest = millis();
 
   // clear the buffer
   memset(response, 0, 9);
 
   int waited = 0;
-  while (_SoftSerial_MHZ19->available() == 0) {
+  while (_SoftSerial_MHZ19.available() == 0) {
     if (debug_MHZ19) Serial.print(".");
     delay(100);  // wait a short moment to avoid false reading
     if (waited++ > 10) {
       if (debug_MHZ19) Serial.println(F("No response after 10 seconds"));
-      _SoftSerial_MHZ19->flush();
+      _SoftSerial_MHZ19.flush();
       return STATUS_NO_RESPONSE;
     }
   }
@@ -703,25 +691,25 @@ int AirGradient::readInternal_MHZ19() {
   // to resync.
   // TODO: I think this might be wrong any only happens during initialization?
   boolean skip = false;
-  while (_SoftSerial_MHZ19->available() > 0 && (unsigned char)_SoftSerial_MHZ19->peek() != 0xFF) {
+  while (_SoftSerial_MHZ19.available() > 0 && (unsigned char)_SoftSerial_MHZ19.peek() != 0xFF) {
     if (!skip) {
       Serial.print(F("MHZ: - skipping unexpected readings:"));
       skip = true;
     }
     Serial.print(" ");
-    Serial.print(_SoftSerial_MHZ19->peek(), HEX);
-    _SoftSerial_MHZ19->read();
+    Serial.print(_SoftSerial_MHZ19.peek(), HEX);
+    _SoftSerial_MHZ19.read();
   }
   if (skip) Serial.println();
 
-  if (_SoftSerial_MHZ19->available() > 0) {
-    int count = _SoftSerial_MHZ19->readBytes(response, 9);
+  if (_SoftSerial_MHZ19.available() > 0) {
+    int count = _SoftSerial_MHZ19.readBytes(response, 9);
     if (count < 9) {
-      _SoftSerial_MHZ19->flush();
+      _SoftSerial_MHZ19.flush();
       return STATUS_INCOMPLETE;
     }
   } else {
-    _SoftSerial_MHZ19->flush();
+    _SoftSerial_MHZ19.flush();
     return STATUS_INCOMPLETE;
   }
 
@@ -744,7 +732,7 @@ int AirGradient::readInternal_MHZ19() {
     Serial.print(F("MHZ: Should be: "));
     Serial.println(check, HEX);
     temperature_MHZ19 = STATUS_CHECKSUM_MISMATCH;
-    _SoftSerial_MHZ19->flush();
+    _SoftSerial_MHZ19.flush();
     return STATUS_CHECKSUM_MISMATCH;
   }
 
@@ -770,7 +758,7 @@ int AirGradient::readInternal_MHZ19() {
     Serial.println(status, HEX);
   }
 
-  _SoftSerial_MHZ19->flush();
+  _SoftSerial_MHZ19.flush();
   return ppm_uart;
 }
 
