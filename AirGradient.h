@@ -195,7 +195,6 @@ class AirGradient
     void passiveMode();
 
     void requestRead();
-    bool read_PMS(DATA& data);
     bool readUntil(DATA& data, uint16_t timeout = SINGLE_RESPONSE_TIME);
 
     const char* getPM2();
@@ -256,16 +255,11 @@ class AirGradient
 
     uint8_t _payload[12];
     Stream* _stream;
-    DATA* _data;
     STATUS _PMSstatus;
     MODE _mode = MODE_ACTIVE;
 
-    uint8_t _index = 0;
-    uint16_t _frameLen;
-    uint16_t _checksum;
-    uint16_t _calculatedChecksum;
     SoftwareSerial *_SoftSerial_PMS;
-    void loop();
+    bool parse_pm_data(DATA &pm_data);
     char Char_PM2[10];
     //PMS VARIABLES PRIVATE END
 
